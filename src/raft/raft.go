@@ -17,8 +17,12 @@ package raft
 //   in the same server.
 //
 
-import "sync"
+import (
+	"strings"
+	"sync"
+)
 import "labrpc"
+import "math"
 
 // import "bytes"
 // import "labgob"
@@ -42,18 +46,29 @@ type ApplyMsg struct {
 	CommandIndex int
 }
 
+type LogEntry struct {
+	term 		int
+	index 		int
+}
+
 //
 // A Go object implementing a single Raft peer.
 //
 type Raft struct {
-	mu        sync.Mutex          // Lock to protect shared access to this peer's state
-	peers     []*labrpc.ClientEnd // RPC end points of all peers
-	persister *Persister          // Object to hold this peer's persisted state
-	me        int                 // this peer's index into peers[]
+	mu			sync.Mutex          // Lock to protect shared access to this peer's state
+	peers     	[]*labrpc.ClientEnd // RPC end points of all peers
+	persister 	*Persister          // Object to hold this peer's persisted state
+	me        	int                 // this peer's index into peers[]
 
 	// Your data here (2A, 2B, 2C).
 	// Look at the paper's Figure 2 for a description of what
 	// state a Raft server must maintain.
+
+	currentTerm int
+	votedFor	*int
+	logEntries	[]LogEntry
+	commitIndex int			// index of highest log entry known to be committed (initialized to 0, increases monotonically)
+	lastApplied int			 // index of highest log entry applied to state machine (initialized to 0, increases monotonically)
 
 }
 
@@ -116,6 +131,10 @@ func (rf *Raft) readPersist(data []byte) {
 //
 type RequestVoteArgs struct {
 	// Your data here (2A, 2B).
+	Term 			int
+	CandidateId 	int
+	LastLogIndex 	int
+	LastLogTerm 	int
 }
 
 //
@@ -124,6 +143,95 @@ type RequestVoteArgs struct {
 //
 type RequestVoteReply struct {
 	// Your data here (2A).
+	Term 			int
+	VoteGranted 	bool
+}
+
+type AppendEntriesArgs struct {
+	Term 			int			// leader’s term
+	LeaderId 		int			//so follower can redirect clients
+	PrevLogIndex 	int			// index of log entry immediately preceding new ones
+	PrevLogTerm 	int			// term of prevLogIndex entry
+	Entries 		[]LogEntry	// log entries to store (empty for heartbeat; may send more than one for efficiency)
+	LeaderCommit 	int			// leader’s commitIndex
+}
+
+type AppendEntriesReply struct {
+	Term 			int
+	success			bool
+}
+
+func min(x, y int) int {
+	if x < y {
+		return x
+	}
+	return y
+}
+
+//
+// AppendEntries RPC handler
+//
+func (rf *Raft) AppendEntries(args *AppendEntriesArgs, reply *AppendEntriesReply) {
+	// heartbeat
+	if len(args.Entries) == 0 {
+
+	}
+
+	// if the term of leader is smaller than the follower's term
+	if args.Term < rf.currentTerm {
+		reply.Term = rf.currentTerm
+		reply.success = false
+	}
+
+	// if there is no entry in the logs of the follower that
+	// can be matched with the previous log of the leader
+	available := false
+
+	for _, existEntry := range rf.logEntries {
+		if existEntry.term == args.PrevLogTerm && existEntry.index == args.PrevLogIndex {
+			available = true
+		}
+	}
+
+	if available == false {
+		reply.Term = rf.currentTerm
+		reply.success = false
+	}
+
+	// If an existing entry conflicts with a new one (same index but different terms)
+	// delete the existing entry and all that follow it
+	removeList := make([]int, 0)
+	for _, existEntry := range rf.logEntries {
+		for _, entry := range args.Entries {
+			if existEntry.index == entry.index && existEntry.term != entry.term {
+				rf.logEntries = rf.logEntries[:existEntry.index]
+				break
+			}
+			if existEntry.index == entry.index && existEntry.term == entry.term {
+				removeList = append(removeList, entry.index)
+			}
+		}
+	}
+
+	// Append any new entries not already in the log
+	for _, entry := range args.Entries {
+		if len(removeList) >= 0 && entry.index != removeList[0] {
+			rf.logEntries = append(rf.logEntries, entry)
+		} else if entry.index == removeList[0]{
+			removeList = removeList[1:]
+		}
+	}
+
+	// update the commit index of the follower
+	if args.LeaderCommit > rf.commitIndex {
+		rf.commitIndex = min(args.LeaderCommit, rf.logEntries[len(rf.logEntries)-1].index)
+	}
+
+}
+
+func (rf *Raft) sendAppendEntries(server int, args *AppendEntriesArgs, reply *AppendEntriesReply) bool{
+	ok := rf.peers[server].Call("Raft.AppendEntries", args, reply)
+	return ok
 }
 
 //
@@ -131,6 +239,20 @@ type RequestVoteReply struct {
 //
 func (rf *Raft) RequestVote(args *RequestVoteArgs, reply *RequestVoteReply) {
 	// Your code here (2A, 2B).
+
+	// term of current server
+	term, _ := rf.GetState()
+
+	if args.Term < term {
+		reply.Term = term
+		reply.VoteGranted = false
+	}
+
+	if (rf.votedFor == nil || *rf.votedFor == args.CandidateId) && rf.lastApplied <= args.LastLogIndex {
+		reply.Term = term
+		reply.VoteGranted = true
+	}
+
 }
 
 //
@@ -223,9 +345,14 @@ func Make(peers []*labrpc.ClientEnd, me int,
 
 	// Your initialization code here (2A, 2B, 2C).
 
+	rf.currentTerm = 0
+	rf.votedFor = nil
+	rf.logEntries = make([]LogEntry, 0)
+	rf.commitIndex = 0
+	rf.lastApplied = 0
+
 	// initialize from state persisted before a crash
 	rf.readPersist(persister.ReadRaftState())
-
 
 	return rf
 }
