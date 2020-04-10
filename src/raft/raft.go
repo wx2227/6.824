@@ -92,7 +92,7 @@ type Raft struct {
 	// Volatile state on leaders
 	nextIndex	[]int				// for each server, index of the next log entry to send to that server (initialized to leader last log index + 1)
 	matchIndex	[]int				// for each server, index of highest log entry known to be replicated on server (initialized to 0, increases monotonically)
-	
+
 	leaderElected chan bool
 	appendEntry chan bool
 }
@@ -182,7 +182,7 @@ func (rf *Raft) AppendEntries(args *AppendEntriesArgs, reply *AppendEntriesReply
 	if args.Term > rf.currentTerm {
 		rf.BeFollower(args.Term)
 		go func() {
-			rf.appendEntry <- true
+			send(rf.appendEntry)
 		}()
 		return
 	}
@@ -196,7 +196,7 @@ func (rf *Raft) AppendEntries(args *AppendEntriesArgs, reply *AppendEntriesReply
 	reply.Term = rf.currentTerm
 	reply.Success = success
 	go func() {
-		rf.appendEntry <- true
+		send(rf.appendEntry)
 	}()
 
 
@@ -294,7 +294,7 @@ func (rf *Raft) RequestVote(args *RequestVoteArgs, reply *RequestVoteReply) {
 		rf.mu.Lock()
 		rf.BeFollower(args.Term)
 		rf.mu.Unlock()
-		rf.leaderElected <- true
+		send(rf.leaderElected)
 	}
 
 	////fmt.Printf("gathering vote from %d\n", rf.me)
@@ -315,7 +315,7 @@ func (rf *Raft) RequestVote(args *RequestVoteArgs, reply *RequestVoteReply) {
 		success = true
 		// after vote granted, the node reset its election time out
 		go func() {
-			rf.leaderElected <- true
+			send(rf.leaderElected)
 		}()
 	}
 
@@ -440,6 +440,14 @@ func (rf *Raft) BeLeader() {
 	}
 }
 
+func send(ch chan bool) {
+	select {
+	case <- ch:
+	default:
+	}
+	ch <- true
+}
+
 func (rf *Raft) StartElection() {
 	////fmt.Printf("Leader election begins\n")
 	//rf.votedFor = &rf.me
@@ -471,7 +479,7 @@ func (rf *Raft) StartElection() {
 						//fmt.Printf("%d become follower during leader election\n", rf.me)
 						rf.BeFollower(reply.Term)
 						go func() {
-							rf.leaderElected <- true
+							send(rf.leaderElected)
 						}()
 						return
 					}
@@ -481,7 +489,7 @@ func (rf *Raft) StartElection() {
 					if atomic.LoadInt32(&count) > int32(len(rf.peers)/2) {
 						rf.BeLeader()
 						go func() {
-							rf.leaderElected <- true
+							send(rf.leaderElected)
 						}()
 					}
 				}
@@ -524,6 +532,9 @@ func (rf *Raft) StartAppendLog() {
 				}
 				if reply.Term > rf.currentTerm {
 					rf.BeFollower(reply.Term)
+					go func() {
+						send(rf.appendEntry)
+					}()
 					return
 				}
 			}(i)
@@ -573,8 +584,9 @@ func Make(peers []*labrpc.ClientEnd, me int,
 
 	// initialize from state persisted before a crash
 	rf.readPersist(persister.ReadRaftState())
-	
+
 	rf.leaderElected = make(chan bool)
+	rf.appendEntry = make(chan bool)
 	heartBeat := time.Duration(100)*time.Millisecond
 
 	// You'll need to write code that takes actions periodically or after delays in time.
