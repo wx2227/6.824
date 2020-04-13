@@ -3,7 +3,9 @@
   <component name="ChangeListManager">
     <list default="true" id="153f6cf8-4941-4898-87ca-c1aa73d74dbd" name="Default Changelist" comment="">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/raft/raft.go" beforeDir="false" afterPath="$PROJECT_DIR$/raft/raft.go" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/raft/config.go" beforeDir="false" afterPath="$PROJECT_DIR$/raft/config.go" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/raft/raft.go" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/raft/test_test.go" beforeDir="false" afterPath="$PROJECT_DIR$/raft/test_test.go" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -53,7 +55,15 @@
     <property name="node.js.selected.package.tslint" value="(autodetect)" />
     <property name="settings.editor.selected.configurable" value="com.goide.configuration.GoLibrariesConfigurableProvider" />
   </component>
-  <component name="RunManager">
+  <component name="RunManager" selected="Go Build.go build raft.go">
+    <configuration name="go build raft.go" type="GoApplicationRunConfiguration" factoryName="Go Application" temporary="true" nameIsGenerated="true">
+      <module name="src" />
+      <working_directory value="$PROJECT_DIR$/" />
+      <kind value="FILE" />
+      <filePath value="$PROJECT_DIR$/raft/raft.go" />
+      <directory value="$PROJECT_DIR$/" />
+      <method v="2" />
+    </configuration>
     <configuration name="go build tmp.go" type="GoApplicationRunConfiguration" factoryName="Go Application" temporary="true" nameIsGenerated="true">
       <module name="src" />
       <working_directory value="$PROJECT_DIR$/" />
@@ -64,6 +74,7 @@
     </configuration>
     <recent_temporary>
       <list>
+        <item itemvalue="Go Build.go build raft.go" />
         <item itemvalue="Go Build.go build tmp.go" />
       </list>
     </recent_temporary>
@@ -76,6 +87,14 @@
       <screen x="0" y="0" width="1680" height="1050" />
     </state>
     <state x="440" y="192" key="#GOPATH/0.0.1680.1050@0.0.1680.1050" timestamp="1585974918083" />
+    <state x="533" y="167" key="#go_build_raft.go" timestamp="1586586960908">
+      <screen x="0" y="0" width="1680" height="1050" />
+    </state>
+    <state x="533" y="167" key="#go_build_raft.go/0.0.1680.1050@0.0.1680.1050" timestamp="1586586960908" />
+    <state x="421" y="125" key="CommitChangelistDialog2" timestamp="1586702886249">
+      <screen x="0" y="0" width="1680" height="1050" />
+    </state>
+    <state x="421" y="125" key="CommitChangelistDialog2/0.0.1680.1050@0.0.1680.1050" timestamp="1586702886249" />
     <state width="1638" height="295" key="GridCell.Tab.0.bottom" timestamp="1586425508956">
       <screen x="0" y="0" width="1680" height="1050" />
     </state>

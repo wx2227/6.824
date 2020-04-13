@@ -357,8 +357,10 @@ func (cfg *config) checkNoLeader() {
 
 // how many servers think a log entry is committed?
 func (cfg *config) nCommitted(index int) (int, interface{}) {
+	//fmt.Printf("index: %d", index)
 	count := 0
 	cmd := -1
+	//fmt.Printf("length of rafts: %v\n", len(cfg.rafts))
 	for i := 0; i < len(cfg.rafts); i++ {
 		if cfg.applyErr[i] != "" {
 			cfg.t.Fatal(cfg.applyErr[i])
@@ -366,6 +368,7 @@ func (cfg *config) nCommitted(index int) (int, interface{}) {
 
 		cfg.mu.Lock()
 		cmd1, ok := cfg.logs[i][index]
+		//fmt.Printf("cmd1: %v, ok: %v, i: %v, index: %v\n", cmd1, ok, i, index)
 		cfg.mu.Unlock()
 
 		if ok {
@@ -375,6 +378,7 @@ func (cfg *config) nCommitted(index int) (int, interface{}) {
 			}
 			count += 1
 			cmd = cmd1
+			//fmt.Printf("cmd1: %v, count: %v\n", cmd1, count)
 		}
 	}
 	return count, cmd
@@ -447,14 +451,19 @@ func (cfg *config) one(cmd int, expectedServers int, retry bool) int {
 		}
 
 		if index != -1 {
+			//fmt.Printf("test begin\n")
+			//fmt.Printf("index: %v, cmd: %v\n", index, cmd)
 			// somebody claimed to be the leader and to have
 			// submitted our command; wait a while for agreement.
 			t1 := time.Now()
 			for time.Since(t1).Seconds() < 2 {
 				nd, cmd1 := cfg.nCommitted(index)
+				//fmt.Printf("nd:%d, cmd1: %v\n", nd, cmd1)
+				//fmt.Printf("expectedServers: %d, cmd: %v\n", expectedServers, cmd)
 				if nd > 0 && nd >= expectedServers {
 					// committed
 					if cmd2, ok := cmd1.(int); ok && cmd2 == cmd {
+						//fmt.Printf("in config file success\n")
 						// and it was the command we submitted.
 						return index
 					}
